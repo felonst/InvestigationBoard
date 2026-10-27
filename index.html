@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Investigation relationship mapping dashboard">
+  <title>Investigation Link Board</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">⌕</div><div><h1>Investigation Link Board</h1><p>විමර්ශන තොරතුරු සහ සම්බන්ධතා සිතියම</p></div></div>
+  <div class="top-actions">
+    <button class="btn btn-ghost" id="newCaseBtn">＋ නව විමර්ශනය</button>
+    <button class="btn btn-ghost" id="exportBtn">⇩ JSON Export</button>
+    <button class="btn btn-primary" id="printBtn">▣ A4 / PDF Print</button>
+  </div>
+</header>
+<main class="app-shell">
+  <aside class="sidebar">
+    <div class="case-card">
+      <label for="caseTitle">විමර්ශන නාමය</label>
+      <input id="caseTitle" value="නව විමර්ශනය" maxlength="120">
+      <label for="caseRef">යොමු අංකය</label>
+      <input id="caseRef" placeholder="උදා: INV-2026-001" maxlength="80">
+      <label for="caseNotes">සටහන් / විමර්ශන සාරාංශය</label>
+      <textarea id="caseNotes" rows="3" placeholder="කෙටි සාරාංශයක්..."></textarea>
+    </div>
+    <div class="section-heading"><h2>තොරතුරු එකතු කරන්න</h2><span class="muted" id="nodeCount">0 අයිතම</span></div>
+    <form id="entityForm" class="entity-form">
+      <label for="entityType">අයිතම වර්ගය</label>
+      <select id="entityType">
+        <option value="person">👤 පුද්ගලයෙක්</option>
+        <option value="phone">📞 දුරකථන අංකය</option>
+        <option value="social">🌐 සමාජ මාධ්‍ය ගිණුම</option>
+        <option value="vehicle">🚗 වාහනය</option>
+        <option value="business">🏢 ව්‍යාපාරයක් / ආයතනයක්</option>
+        <option value="employment">💼 රැකියාව / සේවා ස්ථානය</option>
+        <option value="email">✉️ ඊමේල් ලිපිනය</option>
+        <option value="address">📍 ලිපිනය</option>
+        <option value="device">💻 උපකරණයක්</option>
+        <option value="website">🔗 වෙබ් අඩවිය / ඩොමේනය</option>
+        <option value="wallet">₿ ක්‍රිප්ටෝ වොලට්</option>
+        <option value="account">🧾 ගිණුමක් / හැඳුනුම්පතක්</option>
+        <option value="document">📄 ලේඛනයක් / සාක්ෂියක්</option>
+        <option value="event">⚑ සිදුවීමක්</option>
+        <option value="location">🗺️ ස්ථානයක්</option>
+        <option value="other">◈ වෙනත්</option>
+      </select>
+      <label for="entityName">නම / ප්‍රධාන අගය *</label>
+      <input id="entityName" required placeholder="උදා: නම, අංකය, username...">
+      <label for="entityDetail">අමතර විස්තර</label>
+      <textarea id="entityDetail" rows="3" placeholder="මූලාශ්‍රය, දිනය, සටහන්, URL..."></textarea>
+      <label for="entitySource">තොරතුරු මූලාශ්‍රය</label>
+      <input id="entitySource" placeholder="උදා: සම්මුඛ සාකච්ඡාව / URL">
+      <label for="entityConfidence">තහවුරු කිරීමේ තත්ත්වය</label>
+      <select id="entityConfidence">
+        <option value="unverified">තහවුරු කර නැත</option>
+        <option value="reported">වාර්තා වූ තොරතුරක්</option>
+        <option value="corroborated">අමතර මූලාශ්‍රයකින් තහවුරුයි</option>
+        <option value="confirmed">තහවුරු කර ඇත</option>
+      </select>
+      <button class="btn btn-primary full" type="submit">＋ සිතියමට එක් කරන්න</button>
+    </form>
+    <div class="sidebar-tip"><strong>ඉඟිය</strong><p>සම්බන්ධතාවක් සෑදීමට සිතියමේ අයිතම දෙකක් Ctrl/⌘ සමඟ තෝරන්න. ඉන්පසු “සම්බන්ධ කරන්න” තෝරන්න.</p></div>
+  </aside>
+  <section class="workspace">
+    <div class="toolbar">
+      <div><h2 id="workspaceTitle">සම්බන්ධතා සිතියම</h2><p>අයිතම ඇදගෙන යන්න • Zoom කිරීමට scroll කරන්න • හිස් තැන drag කර සිතියම ගෙන යන්න</p></div>
+      <div class="tool-buttons">
+        <button class="btn btn-light" id="connectBtn">↔ සම්බන්ධ කරන්න</button>
+        <button class="btn btn-light" id="editBtn">✎ තෝරාගත් අයිතමය සංස්කරණය</button>
+        <button class="btn btn-danger-soft" id="deleteBtn">⌫ මකන්න</button>
+        <button class="btn btn-light" id="fitBtn">⤢ සියල්ල පෙන්වන්න</button>
+      </div>
+    </div>
+    <div class="graph-wrap"><div id="network" aria-label="විමර්ශන සම්බන්ධතා සිතියම"></div>
+      <div class="empty-state" id="emptyState"><div class="empty-icon">⌘</div><h3>ඔබේ සම්බන්ධතා සිතියම මෙතැනයි</h3><p>වම් පසින් පළමු අයිතමය එක් කරන්න. පුද්ගලයන්, දුරකථන, ගිණුම් සහ වෙනත් සාක්ෂි අතර සම්බන්ධතා ගොඩනගන්න.</p></div>
+      <div class="graph-legend"><span><i class="dot verified"></i> තහවුරුයි</span><span><i class="dot reported"></i> වාර්තා වූ</span><span><i class="dot unknown"></i> තහවුරු කර නැත</span></div>
+    </div>
+    <div class="bottom-panels">
+      <section class="panel">
+        <div class="panel-title"><h3>තෝරාගත් අයිතමය</h3><span class="muted">අයිතමයක් තෝරන්න</span></div>
+        <div id="detailPanel" class="detail-empty">විස්තර බැලීමට සිතියමේ අයිතමයක් තෝරන්න.</div>
+      </section>
+      <section class="panel">
+        <div class="panel-title"><h3>සම්බන්ධතා</h3><span class="muted" id="edgeCount">0 සම්බන්ධතා</span></div>
+        <div id="relationsPanel" class="relation-empty">තවම සම්බන්ධතා නැත.</div>
+      </section>
+    </div>
+    <footer>සටහන: මෙම අනුවාදයේ දත්ත ඔබේ බ්‍රවුසරයේ පමණක් ගබඩා වේ. නිල සාක්ෂි කළමනාකරණ පද්ධතියක් හෝ ආරක්ෂිත සේවාදායකයක් නොවේ.</footer>
+  </section>
+</main>
+<dialog id="relationDialog">
+  <form method="dialog" id="relationForm" class="dialog-form">
+    <div class="dialog-head"><div><h2>අයිතම දෙකක් සම්බන්ධ කරන්න</h2><p>සම්බන්ධතාවේ ස්වභාවය පැහැදිලිව සටහන් කරන්න.</p></div><button class="icon-btn" value="cancel" aria-label="වසන්න">×</button></div>
+    <label for="fromNode">පළමු අයිතමය</label><select id="fromNode"></select>
+    <label for="relationLabel">සම්බන්ධතාවේ නම *</label><input id="relationLabel" required placeholder="උදා: භාවිතා කරයි / අයිතිකරු / සේවය කරයි">
+    <label for="toNode">දෙවන අයිතමය</label><select id="toNode"></select>
+    <label for="relationNotes">සටහන් / මූලාශ්‍රය</label><textarea id="relationNotes" rows="2" placeholder="මෙම සම්බන්ධතාවට අදාළ සාක්ෂි..."></textarea>
+    <div class="dialog-actions"><button class="btn btn-light" value="cancel">අවලංගු</button><button class="btn btn-primary" id="saveRelationBtn" value="default">සම්බන්ධතාව සුරකින්න</button></div>
+  </form>
+</dialog>
+<dialog id="editDialog">
+  <form method="dialog" id="editForm" class="dialog-form">
+    <div class="dialog-head"><div><h2>අයිතමය සංස්කරණය</h2><p>තොරතුරු නිවැරදි කර සුරකින්න.</p></div><button class="icon-btn" value="cancel" aria-label="වසන්න">×</button></div>
+    <input id="editId" type="hidden">
+    <label for="editType">අයිතම වර්ගය</label><select id="editType"></select>
+    <label for="editName">නම / ප්‍රධාන අගය *</label><input id="editName" required>
+    <label for="editDetail">අමතර විස්තර</label><textarea id="editDetail" rows="3"></textarea>
+    <label for="editSource">තොරතුරු මූලාශ්‍රය</label><input id="editSource">
+    <label for="editConfidence">තහවුරු කිරීමේ තත්ත්වය</label><select id="editConfidence"><option value="unverified">තහවුරු කර නැත</option><option value="reported">වාර්තා වූ තොරතුරක්</option><option value="corroborated">අමතර මූලාශ්‍රයකින් තහවුරුයි</option><option value="confirmed">තහවුරු කර ඇත</option></select>
+    <div class="dialog-actions"><button class="btn btn-light" value="cancel">අවලංගු</button><button class="btn btn-primary" id="saveEditBtn" value="default">වෙනස්කම් සුරකින්න</button></div>
+  </form>
+</dialog>
+<script src="app.js"></script>
+</body>
+</html>
